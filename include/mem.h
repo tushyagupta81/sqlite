@@ -13,5 +13,6 @@ typedef struct {
 
 bool push_back(Array *arr, uint64_t item);
 void *get(Array *arr, size_t i);
+void init_arr(Array * arr);
 
 #endif // !MEM_H

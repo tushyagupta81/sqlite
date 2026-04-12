@@ -23,6 +23,12 @@ bool push_back(Array *arr, uint64_t item) {
   return true;
 }
 
+void init_arr(Array * arr){
+  arr->items = NULL;
+  arr->top = 0;
+  arr->size = 0;
+}
+
 void *get(Array *arr, size_t i) {
   if (i >= arr->top) {
     return NULL;

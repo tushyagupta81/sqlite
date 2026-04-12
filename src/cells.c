@@ -57,23 +57,84 @@ int serial_type_size(uint64_t t) {
   return -1; // invalid
 }
 
+SerialType number_to_serial(uint64_t t) {
+  if (t == 0) {
+    return None; // NULL
+  }
+
+  if (t == 1) {
+    return EightBit2Comp;
+  }
+
+  if (t == 2) {
+    return SixteenBit2Comp;
+  }
+
+  if (t == 3) {
+    return TwentyfourBit2Comp;
+  }
+
+  if (t == 4) {
+    return ThirtytwoBit2Comp;
+  }
+
+  if (t == 5) {
+    return FourtyeightBit2Comp;
+  }
+
+  if (t == 6) {
+    return SixtyfourBit2Comp;
+  }
+
+  if (t == 7) {
+    return SixtyfourBitFloat;
+  }
+
+  if (t == 8) {
+    return ValZero; // integer 0
+  }
+
+  if (t == 9) {
+    return ValOne; // integer 1
+  }
+
+  if (t == 10 || t == 11) {
+    return Reserved;
+  }
+
+  if (t >= 12) {
+    if (t % 2 == 0) {
+      return Blob; // blob
+    }
+    return String; // text
+  }
+
+  return Invalid; // invalid
+}
+
 bool read_cell(FILE *dbfile, uint16_t offset, Cell *cell) {
   fseek(dbfile, offset, SEEK_SET);
 
-  if (read_varint(dbfile, &cell->rec_size) == -1) {
+  int rec_size_bytes = read_varint(dbfile, &cell->rec_size);
+  if (rec_size_bytes == -1) {
     return false;
   }
-  if (read_varint(dbfile, &cell->row_id) == -1) {
+  int row_id_bytes = read_varint(dbfile, &cell->row_id);
+  if (row_id_bytes == -1) {
     return false;
   }
 
-  int size = read_varint(dbfile, &cell->header_size);
+  cell->rec_start_offset = row_id_bytes + rec_size_bytes;
+
+  int size = read_varint(dbfile, &cell->rec.header_size);
   if (size == -1) {
     return false;
   }
-  uint64_t header_left = cell->header_size - size;
+  uint64_t header_left = cell->rec.header_size - size;
 
   uint64_t tot_size = 0;
+
+  uint8_t n_cols = 0;
 
   while (header_left > 0) {
     uint64_t serial;
@@ -87,36 +148,52 @@ bool read_cell(FILE *dbfile, uint16_t offset, Cell *cell) {
       return false;
     }
 
-    push_back(&cell->rec.size, col_size);
+    push_back(&cell->rec.serials, serial);
     tot_size += col_size;
+    n_cols++;
 
-    if (used > cell->header_size) {
+    if (used > header_left) {
       return false;
     }
     header_left -= used;
   }
 
   cell->rec.tot_size = tot_size;
+  cell->rec.n_cols = n_cols;
 
   return true;
 }
 
 bool dump_tables(FILE *dbfile, Cell *cell) {
-  uint64_t data_bytes = cell->rec_size - cell->header_size;
-  uint8_t *data = read_n_bytes(dbfile, data_bytes);
-  if (!data) {
-    return false;
+  uint64_t data_bytes = cell->rec_size - cell->rec.header_size;
+  fseek(dbfile, (long)(cell->rec_start_offset + cell->rec.header_size),
+        SEEK_CUR);
+
+  for (int i = 0; i < cell->rec.serials.top; i++) {
+    uint64_t serial = *(uint64_t *)get(&cell->rec.serials, i);
+    uint64_t col_size = serial_type_size(serial);
+    uint8_t *data = read_n_bytes(dbfile, col_size);
+    if (!data) {
+      return false;
+    }
+
+    SerialType s = number_to_serial(serial);
+
+    if (s == String) {
+      printf("%3lu: \"%.*s\"\n", col_size, (int)col_size, data);
+    } else if (s == None || s == Reserved || s == Blob || s == Invalid) {
+      printf("%3lu: --nothing--", col_size);
+    } else if (s == ValOne) {
+      printf("%3lu: \"1\"\n", col_size);
+    } else if (s == ValZero) {
+      printf("%3lu: \"0\"\n", col_size);
+    } else {
+      printf("%3lu: \"%lu\"\n", col_size, read_big_endian(data, col_size));
+    }
+
+    free(data);
   }
-  uint8_t *ptr = data;
 
-  for (int i = 0; i < cell->rec.size.top; i++) {
-    uint64_t sz = *(uint64_t *)get(&cell->rec.size, i);
-
-    printf("\"%.*s\"\n", (int)sz, ptr);
-    ptr += sz;
-  }
-
-  free(data);
   return true;
 }
 
@@ -147,4 +224,13 @@ int read_varint(FILE *dbfile, uint64_t *val) {
   *val = res;
 
   return 9;
+}
+
+void init_cell(Cell *cell) {
+  cell->rec_size = 0;
+  cell->row_id = 0;
+  cell->rec_start_offset = 0;
+  cell->rec.tot_size = 0;
+  cell->rec.header_size = 0;
+  init_arr(&cell->rec.serials);
 }
