@@ -37,8 +37,8 @@ typedef struct {
   Record rec;
 } Cell;
 
-int read_varint(FILE *dbfile, uint64_t *val);
-bool read_cell(FILE *dbfile, uint16_t offset, Cell *cell);
+int read_varint(uint8_t *buffer, size_t size, size_t offset, uint64_t *val);
+bool read_cell(uint8_t * buffer, size_t page_size, uint16_t offset, Cell *cell);
 bool dump_tables(FILE *dbfile, Cell *cell);
 void init_cell(Cell * cell);
 

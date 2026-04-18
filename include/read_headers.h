@@ -5,7 +5,7 @@
 #include <stdint.h>
 #include <stdio.h>
 
-typedef struct{
+typedef struct {
   uint8_t node_type;
   uint16_t freeblocks;
   uint16_t cells;
@@ -15,7 +15,8 @@ typedef struct{
 } BTreeHeader;
 
 bool check_magic_number(FILE *dbfile, size_t file_len);
-bool read_btree_headers(FILE *dbfile, BTreeHeader *bth);
-bool read_cell_ptr_array(FILE *dbfile, uint16_t *cell_ptr_arr, uint16_t cells);
+bool read_btree_headers(uint8_t *buffer, size_t size, BTreeHeader *bth, bool first_page);
+bool read_cell_ptr_array(uint8_t *buffer, size_t size, uint16_t *cell_ptr_arr,
+                         uint16_t cells, uint16_t bth_size);
 
 #endif // !READ_HEADERS_H

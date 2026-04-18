@@ -31,43 +31,49 @@ bool check_magic_number(FILE *dbfile, size_t file_len) {
   return true;
 }
 
-bool read_btree_headers(FILE *dbfile, BTreeHeader *bth) {
-  void *data = read_n_bytes(dbfile, btree_header);
-  if (data == NULL) {
+bool read_btree_headers(uint8_t *buffer, size_t size, BTreeHeader *bth, bool first_page) {
+  size_t initial_size = first_page ? 108 : 8;
+  if (size < initial_size) {
     return false;
   }
 
-  uint8_t *conv_data = (uint8_t *)data;
-
+  uint8_t *conv_data = buffer + 100;
   bth->node_type = conv_data[0];
-  bth->freeblocks = conv_data[1] << 8 | conv_data[2];
-  bth->cells = conv_data[3] << 8 | conv_data[4];
-  bth->cell_start = conv_data[5] << 8 | conv_data[6];
+  bth->freeblocks = ((uint16_t)conv_data[1] << 8) | conv_data[2];
+  bth->cells = ((uint16_t)conv_data[3] << 8) | conv_data[4];
+  bth->cell_start = ((uint16_t)conv_data[5] << 8) | conv_data[6];
   bth->frag_trees = conv_data[7];
 
   if (bth->node_type == 2 || bth->node_type == 5) {
-    free(data);
-    data = read_n_bytes(dbfile, interior_btree_header_extra);
-    if (data == NULL) {
+    if (size < 112) {
       return false;
     }
-    conv_data = (uint8_t *)data;
-    bth->right_ptr = conv_data[0] << 24 | conv_data[1] << 16 |
-                     conv_data[2] << 8 | conv_data[3];
-    free(data);
+    bth->right_ptr = ((uint32_t)conv_data[8] << 24) |
+                     ((uint32_t)conv_data[9] << 16) |
+                     ((uint32_t)conv_data[10] << 8) | (uint32_t)conv_data[11];
   }
 
   return true;
 }
 
-bool read_cell_ptr_array(FILE *dbfile, uint16_t *cell_ptr_arr, uint16_t cells) {
-  for (int i = 0; i < cells; i++) {
-    uint8_t *data = read_n_bytes(dbfile, 2);
-    if (!data) {
-      return false;
-    }
-    cell_ptr_arr[i] = data[0] << 8 | data[1];
-    free(data);
+bool read_cell_ptr_array(uint8_t *buffer, size_t size, uint16_t *cell_ptr_arr,
+                         uint16_t cells, uint16_t bth_size) {
+  const size_t initial_offset = 100 + bth_size;
+  if (size < initial_offset) {
+    return false;
   }
+
+  uint8_t *data = buffer + initial_offset;
+  size -= initial_offset;
+
+  if (size < (size_t)cells * 2) {
+    return false;
+  }
+
+  for (int i = 0; i < cells; i++) {
+    cell_ptr_arr[i] = ((uint16_t)data[0] << 8) | data[1];
+    data += 2;
+  }
+
   return true;
 }
