@@ -7,4 +7,5 @@ Checks: >
   -readability-magic-numbers,
   -readability-identifier-length,
   -bugprone-easily-swappable-parameters,
+  -readability-non-const-parameter,
 WarningsAsErrors: '*'

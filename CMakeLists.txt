@@ -15,6 +15,7 @@ target_sources(sqlite
    src/file.c
    src/cells.c
    src/mem.c
+   src/page.c
 )
 
 target_include_directories(sqlite

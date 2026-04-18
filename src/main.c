@@ -1,5 +1,6 @@
 #include "cells.h"
 #include "file.h"
+#include "page.h"
 #include "read_headers.h"
 #include <stdint.h>
 #include <stdio.h>
@@ -47,7 +48,7 @@ int main(int argc, char **argv) {
     return 1;
   }
 
-  int page_read_size = read_page(db_file, page_size, 0, page);
+  int page_read_size = read_page(db_file, page_size, 1, page);
   if (page_read_size == -1) {
     free(page);
     page = NULL;
@@ -63,7 +64,7 @@ int main(int argc, char **argv) {
 
   uint16_t *cell_ptr_arr = malloc(sizeof(uint16_t) * bth.cells);
   read_cell_ptr_array(page, page_read_size, cell_ptr_arr, bth.cells,
-                      8 + (bth.right_ptr ? 4 : 0));
+                      8 + (bth.right_ptr ? 4 : 0), 1);
 
   // for(int i=0;i<bth.cells;i++){
   //   printf("%hu\n", cell_ptr_arr[i]);
@@ -80,13 +81,13 @@ int main(int argc, char **argv) {
         init_cell(&cell);
         read_cell(page, page_read_size, cell_ptr_arr[i], &cell);
 
-        fseek(db_file, cell_ptr_arr[i], SEEK_SET);
-
-        dump_tables(db_file, &cell);
+        dump_tables(page, page_read_size, &cell);
         printf("\n");
       }
     }
   }
+
+  // read_x_page(db_file, page_size, 2);
 
   free(cell_ptr_arr);
   return 0;

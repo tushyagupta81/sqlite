@@ -17,6 +17,7 @@ typedef struct {
 bool check_magic_number(FILE *dbfile, size_t file_len);
 bool read_btree_headers(uint8_t *buffer, size_t size, BTreeHeader *bth, bool first_page);
 bool read_cell_ptr_array(uint8_t *buffer, size_t size, uint16_t *cell_ptr_arr,
-                         uint16_t cells, uint16_t bth_size);
+                         uint16_t cells, uint16_t bth_size, bool page_no);
+void dump_bth(BTreeHeader *bth);
 
 #endif // !READ_HEADERS_H

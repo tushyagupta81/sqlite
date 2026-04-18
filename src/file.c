@@ -28,8 +28,13 @@ uint64_t read_big_endian(const uint8_t *data, size_t num) {
 }
 
 int read_page(FILE *db_file, uint16_t page_size, size_t page_no,
-               uint8_t *buffer) {
-  if (fseek(db_file, (off_t)page_no * page_size, SEEK_SET) != 0) {
+              uint8_t *buffer) {
+  if (page_no == 0) {
+    return -1; // invalid in SQLite
+  }
+
+  off_t offset = (off_t)(page_no - 1) * page_size;
+  if (fseek(db_file, offset, SEEK_SET) != 0) {
     return -1;
   }
   size_t num_el = fread(buffer, 1, page_size, db_file);

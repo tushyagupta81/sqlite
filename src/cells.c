@@ -5,6 +5,7 @@
 #include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
+#include <string.h>
 
 int serial_type_size(uint64_t t) {
   if (t == 0) {
@@ -112,7 +113,7 @@ SerialType number_to_serial(uint64_t t) {
   return Invalid; // invalid
 }
 
-bool read_cell(uint8_t * buffer, size_t page_size, uint16_t offset, Cell *cell) {
+bool read_cell(uint8_t *buffer, size_t page_size, uint16_t offset, Cell *cell) {
   int rec_size_bytes = read_varint(buffer, page_size, offset, &cell->rec_size);
   if (rec_size_bytes == -1) {
     return false;
@@ -124,7 +125,7 @@ bool read_cell(uint8_t * buffer, size_t page_size, uint16_t offset, Cell *cell) 
   }
   offset += row_id_bytes;
 
-  cell->rec_start_offset = row_id_bytes + rec_size_bytes;
+  cell->rec_start_offset = offset;
 
   int size = read_varint(buffer, page_size, offset, &cell->rec.header_size);
   if (size == -1) {
@@ -167,34 +168,40 @@ bool read_cell(uint8_t * buffer, size_t page_size, uint16_t offset, Cell *cell) 
   return true;
 }
 
-bool dump_tables(FILE *dbfile, Cell *cell) {
-  uint64_t data_bytes = cell->rec_size - cell->rec.header_size;
-  fseek(dbfile, (long)(cell->rec_start_offset + cell->rec.header_size),
-        SEEK_CUR);
+bool dump_tables(uint8_t *buffer, size_t size, Cell *cell) {
+  size_t offset = cell->rec_start_offset + cell->rec.header_size;
 
-  for (int i = 0; i < cell->rec.serials.top; i++) {
-    uint64_t serial = *(uint64_t *)get(&cell->rec.serials, i);
+  if (offset >= size){
+    return false;
+  }
+
+  for (size_t i = 0; i < cell->rec.serials.top; i++) {
+    uint64_t serial;
+    memcpy(&serial, get(&cell->rec.serials, i), sizeof(uint64_t));
+
     uint64_t col_size = serial_type_size(serial);
-    uint8_t *data = read_n_bytes(dbfile, col_size);
-    if (!data) {
+
+    if (offset + col_size > size){
       return false;
     }
+
+    uint8_t *data = buffer + offset;
+    offset += col_size;
 
     SerialType s = number_to_serial(serial);
 
     if (s == String) {
       printf("%3lu: \"%.*s\"\n", col_size, (int)col_size, data);
     } else if (s == None || s == Reserved || s == Blob || s == Invalid) {
-      printf("%3lu: --nothing--", col_size);
+      printf("%3lu: --nothing--\n", col_size);
     } else if (s == ValOne) {
       printf("%3lu: \"1\"\n", col_size);
     } else if (s == ValZero) {
       printf("%3lu: \"0\"\n", col_size);
     } else {
-      printf("%3lu: \"%lu\"\n", col_size, read_big_endian(data, col_size));
+      printf("%3lu: \"%llu\"\n", col_size,
+             (unsigned long long)read_big_endian(data, col_size));
     }
-
-    free(data);
   }
 
   return true;
