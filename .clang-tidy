@@ -4,5 +4,6 @@ Checks: >
   modernize-*,
   performance-*,
   readability-*,
-  cppcoreguidelines-*
+  cppcoreguidelines-*,
+  -performance-move-const-arg,
 WarningsAsErrors: '*'
