@@ -6,4 +6,11 @@ Checks: >
   readability-*,
   cppcoreguidelines-*,
   -performance-move-const-arg,
+  -cppcoreguidelines-avoid-const-or-ref-data-members,
+  -readability-identifier-length,
+  -cppcoreguidelines-pro-type-reinterpret-cast,
+  -readability-const-return-type,
+  -cppcoreguidelines-pro-bounds-pointer-arithmetic,
+  -performance-unnecessary-value-param,
+  -readability-else-after-return,
 WarningsAsErrors: '*'
