@@ -13,4 +13,6 @@ Checks: >
   -cppcoreguidelines-pro-bounds-pointer-arithmetic,
   -performance-unnecessary-value-param,
   -readability-else-after-return,
+  -readability-math-missing-parentheses,
+  -bugprone-easily-swappable-parameters,
 WarningsAsErrors: '*'

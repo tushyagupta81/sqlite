@@ -6,11 +6,13 @@
 
 class LeafNode {
   private:
+    Page &page;
+
     auto header() -> LeafHeader&;
     [[nodiscard]] auto header() const -> const LeafHeader&;
+
     auto getSlotPos(Slot*slots, Key key) -> uint16_t;
     auto freeSize() -> uint16_t;
-    Page &page;
     [[nodiscard]] auto slots() const -> Slot*;
   public:
     explicit LeafNode(Page &page);
