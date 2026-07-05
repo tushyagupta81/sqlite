@@ -17,4 +17,6 @@ Checks: >
   -bugprone-easily-swappable-parameters,
   -cppcoreguidelines-avoid-magic-numbers,
   -readability-magic-numbers,
+  -cppcoreguidelines-special-member-functions,
+  -cppcoreguidelines-avoid-do-while,
 WarningsAsErrors: '*'

@@ -59,7 +59,7 @@ auto main() -> int {
   //
 
   for (uint32_t i = 2; i <= 1000; i += 2) {
-    tree.delete_rec(root, i);
+    tree.remove(root, i);
   }
   //
   // Verify.

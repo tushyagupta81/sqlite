@@ -6,6 +6,7 @@
 #include <cassert>
 #include <cstdint>
 #include <cstring>
+#include <iostream>
 
 InternalNode::InternalNode(Page &page) : page(page) {}
 
@@ -117,19 +118,14 @@ auto InternalNode::insert(Key sep, PageId left_child, PageId right_child)
     }
   }
 
-  if (pos == -1) {
-    // Tree corruption / programming error.
-    return InsertResult{
-        .split = false,
-        .old_page = 0,
-    };
-  }
+  assert(pos != -1);
 
   // Make room after the matching child.
   std::memmove(&cells[pos + 2], &cells[pos + 1],
                (hdr.key_cnt - pos - 1) * sizeof(InternalCell));
 
-  cells[pos + 1].key = sep;
+  cells[pos + 1].key = cells[pos].key;
+  cells[pos].key = sep;
   cells[pos + 1].page_id = right_child;
 
   hdr.key_cnt++;
@@ -164,7 +160,7 @@ auto InternalNode::split(Page &new_page, Key sep, PageId left_child,
   long child_pos = std::distance(children.begin(), it);
 
   children.insert(children.begin() + child_pos + 1, right_child);
-  keys.insert(keys.begin() + child_pos + 1, sep);
+  keys.insert(keys.begin() + child_pos, sep);
 
   size_t promote = keys.size() / 2;
   Key promoted_key = keys[promote];

@@ -87,7 +87,7 @@ auto Btree::getLeaf(PageId root, Key key) -> PageId {
   }
 }
 
-void Btree::delete_rec(PageId root, Key key) {
+void Btree::remove(PageId root, Key key) {
   PageId leaf_page_id = this->getLeaf(root, key);
   Page &leaf_node_page = pager.read(leaf_page_id);
   LeafNode leaf(leaf_node_page);

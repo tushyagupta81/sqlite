@@ -4,3 +4,4 @@
 #include "pager.hpp"
 
 auto getPageType(Page &page) -> PageType;
+void hexDump(const Page &page);

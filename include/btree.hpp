@@ -27,7 +27,7 @@ public:
   explicit Btree(Pager &pager);
   auto insert(PageId root, Key key, Record value) -> PageId;
   auto search(PageId root, Key key) -> std::optional<Record>;
-  void delete_rec(PageId root, Key key);
+  void remove(PageId root, Key key);
   auto contains(PageId root, Key key) -> bool;
 
 private:

@@ -25,9 +25,10 @@ void DiskManager::read(uint64_t offset, void *buffer, size_t bytes) {
 }
 
 void DiskManager::write(uint64_t offset, const void *buffer, size_t bytes) {
-  file.seekp(static_cast<std::streamsize>(offset));
+  file.seekp(static_cast<long>(offset));
   file.write(static_cast<const char *>(buffer),
-             static_cast<std::streamsize>(bytes));
+             static_cast<long>(bytes));
+  file.flush();
 }
 
 void DiskManager::flush() { file.flush(); }

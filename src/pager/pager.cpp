@@ -1,4 +1,5 @@
 #include "pager.hpp"
+#include "page_utils.hpp"
 #include <cstdint>
 
 auto Pager::read(PageId page_no) -> Page & {
@@ -29,10 +30,6 @@ void Pager::flushPage(PageId page_no) {
 
   Page &page = buffer.getPage(page_no);
 
-  if (!page.dirty) {
-    return;
-  }
-
   write(page);
 
   page.dirty = false;
@@ -48,7 +45,7 @@ void Pager::write(Page &page) {
 auto Pager::allocatePage() -> PageId {
   page_cnt += 1;
 
-  dbfile.resize(static_cast<uint64_t>(page_cnt - 1) * PAGE_SIZE);
+  dbfile.resize(static_cast<uint64_t>(page_cnt) * PAGE_SIZE);
 
   return page_cnt;
 }

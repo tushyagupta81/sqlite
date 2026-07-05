@@ -5,7 +5,6 @@
 #include <algorithm>
 #include <cstdint>
 #include <cstring>
-#include <future>
 #include <utility>
 #include <vector>
 
@@ -66,12 +65,20 @@ auto LeafNode::insert(Key key, const Record &record) -> InsertResult {
 }
 
 auto LeafNode::getSlotPos(Slot *slots, Key key) -> uint16_t {
-  for (uint32_t i = 0; i < header().cell_cnt; i++) {
-    if (slots[i].key > key) {
-      return i;
+  int l = 0;
+  int h = static_cast<int>(header().cell_cnt) - 1;
+
+  while (l <= h) {
+    int m = l + (h - l) / 2;
+
+    if (slots[m].key > key) {
+      h = m - 1;
+    } else {
+      l = m + 1;
     }
   }
-  return header().cell_cnt;
+
+  return static_cast<uint16_t>(l);
 }
 
 auto LeafNode::freeSize() -> uint16_t {
