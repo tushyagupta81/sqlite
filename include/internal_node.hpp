@@ -1,5 +1,6 @@
 #pragma once
 
+#include "btree.hpp"
 #include "page_layout.hpp"
 #include <cstdint>
 
@@ -11,11 +12,11 @@ struct InternalCell {
 class InternalNode {
 private:
   Page &page;
-  
+
   auto header() -> InternalHeader &;
   [[nodiscard]] auto header() const -> const InternalHeader &;
 
-  auto cells() -> InternalCell*;
+  auto cells() -> InternalCell *;
   auto getCellPos(Key key) -> int;
 
 public:
@@ -25,8 +26,10 @@ public:
 
   auto getChild(Key key) -> PageId;
 
-  void insert(Key sep, PageId left_child, PageId right_child);
+  auto insert(Key sep, PageId left_child, PageId right_child) -> InsertResult;
 
   void init(PageId right_child);
   void clear(PageId right_child);
+
+  auto split(Page &new_page, Key sep, PageId left_child, PageId right_child) -> SplitResult;
 };

@@ -11,6 +11,17 @@ struct Record{
 
 using Key = uint64_t;
 
+struct InsertResult {
+  bool split;
+  PageId old_page;
+};
+
+struct SplitResult {
+  Key sep;
+  PageId left_child;
+  PageId right_child;
+};
+
 class Btree {
 public:
   explicit Btree(Pager &pager);

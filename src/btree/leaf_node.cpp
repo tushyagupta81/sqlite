@@ -2,8 +2,12 @@
 #include "btree.hpp"
 #include "page_layout.hpp"
 #include "pager.hpp"
+#include <algorithm>
 #include <cstdint>
 #include <cstring>
+#include <future>
+#include <utility>
+#include <vector>
 
 LeafNode::LeafNode(Page &page) : page(page) {}
 
@@ -23,7 +27,7 @@ auto LeafNode::slots() const -> Slot * {
   return reinterpret_cast<Slot *>(page.data.data() + sizeof(LeafHeader));
 }
 
-void LeafNode::insert(Key key, const Record &record) {
+auto LeafNode::insert(Key key, const Record &record) -> InsertResult {
   auto *slots = this->slots();
   auto &hdr = header();
   auto n_slots = hdr.cell_cnt;
@@ -32,7 +36,10 @@ void LeafNode::insert(Key key, const Record &record) {
   uint16_t space_needed = sizeof(Slot) + record_size;
   if (space_needed > freeSize()) {
     // No avaialbe area;
-    return;
+    return InsertResult{
+        .split = true,
+        .old_page = this->page.page_no,
+    };
   }
 
   uint16_t insert_pos = getSlotPos(slots, key);
@@ -53,6 +60,9 @@ void LeafNode::insert(Key key, const Record &record) {
   hdr.cell_cnt += 1;
   hdr.free_end = new_free_end;
   hdr.free_start = new_free_start;
+  return InsertResult{
+      .split = true,
+  };
 }
 
 auto LeafNode::getSlotPos(Slot *slots, Key key) -> uint16_t {
@@ -110,4 +120,88 @@ void LeafNode::init() {
   hdr.free_start = sizeof(LeafHeader);
   hdr.free_end = PAGE_SIZE;
   hdr.next_leaf = 0;
+}
+
+auto LeafNode::entries() -> std::vector<std::pair<Key, Record>> {
+  Slot *slots = this->slots();
+  uint32_t cell_cnt = this->header().cell_cnt;
+  std::vector<std::pair<Key, Record>> krpair(cell_cnt);
+
+  for (uint32_t i = 0; i < cell_cnt; i++) {
+    Key key = slots[i].key;
+    Record rec = getRecord(key);
+    krpair[i] = {key, rec};
+  }
+
+  return krpair;
+}
+
+void LeafNode::clear() {
+  auto &hdr = header();
+  hdr.common.page_type = PageType::Leaf;
+  hdr.cell_cnt = 0;
+  hdr.free_start = sizeof(LeafHeader);
+  hdr.free_end = PAGE_SIZE;
+}
+
+auto LeafNode::split(Page &new_page, Key key, Record rec) -> SplitResult {
+  auto entries = this->entries();
+  entries.emplace_back(key, rec);
+  std::sort(begin(entries), end(entries),
+            [](auto &a, auto &b) -> auto { return a.first < b.first; });
+
+  LeafNode new_leaf_page(new_page);
+  new_leaf_page.init();
+  this->clear();
+
+  uint32_t mid = entries.size() / 2;
+  Key promoted_key = entries[mid].first;
+
+  uint32_t i = 0;
+  for (; i < mid; i++) {
+    this->insert(entries[i].first, entries[i].second);
+  }
+  for (; i < entries.size(); i++) {
+    new_leaf_page.insert(entries[i].first, entries[i].second);
+  }
+
+  return SplitResult{
+      .sep = promoted_key,
+      .left_child = this->page.page_no,
+      .right_child = new_page.page_no,
+  };
+}
+
+void LeafNode::delete_rec(Key key) {
+  auto &hdr = this->header();
+  Slot *slots = this->slots();
+
+  int l = 0;
+  int h = static_cast<int>(hdr.cell_cnt) - 1;
+
+  while (l <= h) {
+    int m = l + (h - l) / 2;
+    if (slots[m].key == key) {
+      std::memmove(&slots[m],     // destination
+                   &slots[m + 1], // source
+                   (hdr.cell_cnt - m - 1) * sizeof(Slot));
+      hdr.cell_cnt -= 1;
+      hdr.free_start -= sizeof(Slot);
+      return;
+    } else if (slots[m].key < key) {
+      l = m + 1;
+    } else {
+      h = m - 1;
+    }
+  }
+}
+
+void LeafNode::compact() {
+  auto entries = this->entries();
+
+  this->clear();
+
+  for (auto &kr : entries) {
+    this->insert(kr.first, kr.second);
+  }
 }
