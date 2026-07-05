@@ -1,6 +1,23 @@
 #include "disk.hpp"
 #include <cstdint>
 #include <filesystem>
+#include <utility>
+
+DiskManager::DiskManager(std::filesystem::path filepath)
+    : filepath(std::move(filepath)) {
+  file.open(this->filepath, std::ios::binary | std::ios::in | std::ios::out);
+
+  if (!file.is_open()) {
+    std::ofstream create(this->filepath, std::ios::binary);
+    create.close();
+
+    file.open(this->filepath, std::ios::binary | std::ios::in | std::ios::out);
+  }
+
+  if (!file.is_open()) {
+    throw std::runtime_error("Failed to open database file");
+  }
+}
 
 void DiskManager::read(uint64_t offset, void *buffer, size_t bytes) {
   file.seekg(static_cast<long>(offset));
@@ -25,7 +42,7 @@ auto DiskManager::filesize() -> uint64_t {
   return filesize;
 }
 
-void DiskManager::resize(uint64_t size){
+void DiskManager::resize(uint64_t size) {
   file.flush();
   std::filesystem::resize_file(filepath, size);
 }

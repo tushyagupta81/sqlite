@@ -52,3 +52,16 @@ auto Pager::allocatePage() -> PageId {
 
   return page_cnt;
 }
+
+Pager::Pager(std::filesystem::path filepath)
+    : dbfile(std::move(filepath)),
+      page_cnt(0)
+{
+    uint64_t bytes = dbfile.filesize();
+
+    if (bytes % PAGE_SIZE != 0) {
+        throw std::runtime_error("Database file is corrupt");
+    }
+
+    page_cnt = static_cast<PageId>(bytes / PAGE_SIZE);
+}

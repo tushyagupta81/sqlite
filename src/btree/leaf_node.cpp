@@ -61,7 +61,7 @@ auto LeafNode::insert(Key key, const Record &record) -> InsertResult {
   hdr.free_end = new_free_end;
   hdr.free_start = new_free_start;
   return InsertResult{
-      .split = true,
+      .split = false,
   };
 }
 

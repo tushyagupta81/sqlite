@@ -5,7 +5,7 @@
 #include <optional>
 #include <vector>
 
-struct Record{
+struct Record {
   std::vector<std::byte> record;
 };
 
@@ -25,11 +25,13 @@ struct SplitResult {
 class Btree {
 public:
   explicit Btree(Pager &pager);
-  void insert(PageId root, Key key, Record value);
+  auto insert(PageId root, Key key, Record value) -> PageId;
   auto search(PageId root, Key key) -> std::optional<Record>;
-  void erase(PageId root, Key key);
+  void delete_rec(PageId root, Key key);
+  auto contains(PageId root, Key key) -> bool;
 
 private:
   auto getLeaf(PageId root, Key key) -> PageId;
-  Pager& pager;
+  auto recursiveInsert(PageId root, Key key, Record record) -> SplitResult;
+  Pager &pager;
 };

@@ -35,6 +35,7 @@ class Pager{
     void loadPage(PageId page_no);
     void write(Page &page);
   public:
+    explicit Pager(std::filesystem::path filepath);
     auto read(PageId page_no) -> Page&;
 
     void flushPage(PageId page_no);
