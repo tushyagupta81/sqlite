@@ -152,6 +152,7 @@ void LeafNode::clear() {
 }
 
 auto LeafNode::split(Page &new_page, Key key, Record rec) -> SplitResult {
+  auto &hdr = this->header();
   auto entries = this->entries();
   entries.emplace_back(key, rec);
   std::sort(begin(entries), end(entries),
@@ -160,6 +161,8 @@ auto LeafNode::split(Page &new_page, Key key, Record rec) -> SplitResult {
   LeafNode new_leaf_page(new_page);
   new_leaf_page.init();
   this->clear();
+  new_leaf_page.header().next_leaf = hdr.next_leaf;
+  hdr.next_leaf = new_page.page_no;
 
   uint32_t mid = entries.size() / 2;
   Key promoted_key = entries[mid].first;

@@ -1,5 +1,4 @@
 #include "pager.hpp"
-#include "page_utils.hpp"
 #include <cstdint>
 
 auto Pager::read(PageId page_no) -> Page & {
