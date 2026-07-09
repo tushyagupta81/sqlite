@@ -37,7 +37,6 @@ auto Btree::recursiveInsert(PageId root, Key key, Record record)
     }
   }
   return SplitResult{
-      .sep = 0,
       .left_child = 0,
       .right_child = 0,
   };

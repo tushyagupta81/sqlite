@@ -1,6 +1,7 @@
 #include "leaf_node.hpp"
 #include "btree.hpp"
 #include "page_layout.hpp"
+#include "page_utils.hpp"
 #include "pager.hpp"
 #include <algorithm>
 #include <cstdint>
@@ -31,7 +32,8 @@ auto LeafNode::insert(Key key, const Record &record) -> InsertResult {
   auto &hdr = header();
   auto n_slots = hdr.cell_cnt;
 
-  uint16_t record_size = record.record.size();
+  uint16_t record_size =
+      record.key.size() + sizeof(record.key_size) + record.record.size();
   uint16_t space_needed = sizeof(Slot) + record_size;
   if (space_needed > freeSize()) {
     // No avaialbe area;
@@ -50,15 +52,25 @@ auto LeafNode::insert(Key key, const Record &record) -> InsertResult {
   uint16_t new_free_end = hdr.free_end - record_size;
   uint16_t new_free_start = hdr.free_start + sizeof(Slot);
 
-  slots[insert_pos].offset = new_free_end;
-  slots[insert_pos].size = record_size;
-  slots[insert_pos].key = key;
-
-  memcpy(page.data.data() + new_free_end, record.record.data(), record_size);
-
-  hdr.cell_cnt += 1;
   hdr.free_end = new_free_end;
   hdr.free_start = new_free_start;
+
+  slots[insert_pos].offset = new_free_end;
+  slots[insert_pos].size = record_size;
+
+  uint16_t write_pos = new_free_end;
+
+  memcpy(page.data.data() + write_pos, &record.key_size,
+         sizeof(record.key_size));
+  write_pos += sizeof(record.key_size);
+
+  memcpy(page.data.data() + write_pos, record.key.data(), record.key.size());
+  write_pos += record.key.size();
+
+  memcpy(page.data.data() + write_pos, record.record.data(),
+         record.record.size());
+
+  hdr.cell_cnt += 1;
   return InsertResult{
       .split = false,
   };
@@ -71,7 +83,7 @@ auto LeafNode::getSlotPos(Slot *slots, Key key) -> uint16_t {
   while (l <= h) {
     int m = l + (h - l) / 2;
 
-    if (slots[m].key > key) {
+    if (getKey(slots[m]) > key) {
       h = m - 1;
     } else {
       l = m + 1;
@@ -90,10 +102,16 @@ auto LeafNode::getRecord(Key key) const -> Record {
   auto hrd = header();
   Record rec{};
   for (uint32_t i = 0; i < hrd.cell_cnt; i++) {
-    if (slots[i].key == key) {
-      rec.record.resize(slots[i].size);
-      std::memcpy(rec.record.data(), page.data.data() + slots[i].offset,
-                  slots[i].size);
+    Key curr_key = getKey(slots[i]);
+    if (curr_key == key) {
+      auto key_size = key.size();
+      auto *offset = page.data.data() + slots[i].offset + sizeof(KeySize) + key_size;
+
+      rec.key = key;
+      rec.key_size = key_size;
+      rec.record.resize(slots[i].size - key.size() - sizeof(KeySize));
+      std::memcpy(rec.record.data(), offset, rec.record.size());
+      break;
     }
   }
   return rec;
@@ -109,9 +127,9 @@ auto LeafNode::contains(Key key) const -> bool {
   int h = hdr.cell_cnt - 1;
   while (l <= h) {
     int m = l + ((h - l) / 2);
-    if (slots[m].key == key) {
+    if (getKey(slots[m]) == key) {
       return true;
-    } else if (slots[m].key < key) {
+    } else if (getKey(slots[m]) < key) {
       l = m + 1;
     } else {
       h = m - 1;
@@ -135,7 +153,7 @@ auto LeafNode::entries() -> std::vector<std::pair<Key, Record>> {
   std::vector<std::pair<Key, Record>> krpair(cell_cnt);
 
   for (uint32_t i = 0; i < cell_cnt; i++) {
-    Key key = slots[i].key;
+    Key key = getKey(slots[i]);
     Record rec = getRecord(key);
     krpair[i] = {key, rec};
   }
@@ -191,14 +209,14 @@ void LeafNode::delete_rec(Key key) {
 
   while (l <= h) {
     int m = l + (h - l) / 2;
-    if (slots[m].key == key) {
+    if (getKey(slots[m]) == key) {
       std::memmove(&slots[m],     // destination
                    &slots[m + 1], // source
                    (hdr.cell_cnt - m - 1) * sizeof(Slot));
       hdr.cell_cnt -= 1;
       hdr.free_start -= sizeof(Slot);
       return;
-    } else if (slots[m].key < key) {
+    } else if (getKey(slots[m]) < key) {
       l = m + 1;
     } else {
       h = m - 1;
@@ -214,4 +232,15 @@ void LeafNode::compact() {
   for (auto &kr : entries) {
     this->insert(kr.first, kr.second);
   }
+}
+
+auto LeafNode::getKey(Slot slot) const -> Key {
+  auto offset = slot.offset;
+  auto key_size = read<KeySize>(page.data.data() + offset);
+  offset += sizeof(KeySize);
+
+  Key key(key_size);
+  memcpy(key.data(), page.data.data() + offset, key_size);
+
+  return key;
 }

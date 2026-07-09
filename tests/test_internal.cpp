@@ -1,6 +1,7 @@
 #include <catch2/catch_test_macros.hpp>
 
 #include "internal_node.hpp"
+#include "test_utils.hpp"
 
 TEST_CASE("Internal node chooses child") {
   Page page{};
@@ -9,15 +10,15 @@ TEST_CASE("Internal node chooses child") {
 
   node.init(1);
 
-  node.insert(10, 1, 2);
-  node.insert(20, 2, 3);
-  node.insert(30, 3, 4);
+  node.insert(makeKey(10), 1, 2);
+  node.insert(makeKey(20), 2, 3);
+  node.insert(makeKey(30), 3, 4);
 
-  REQUIRE(node.getChild(5) == 1);
-  REQUIRE(node.getChild(10) == 2);
-  REQUIRE(node.getChild(15) == 2);
-  REQUIRE(node.getChild(25) == 3);
-  REQUIRE(node.getChild(35) == 4);
+  REQUIRE(node.getChild(makeKey(5)) == 1);
+  REQUIRE(node.getChild(makeKey(10)) == 2);
+  REQUIRE(node.getChild(makeKey(15)) == 2);
+  REQUIRE(node.getChild(makeKey(25)) == 3);
+  REQUIRE(node.getChild(makeKey(35)) == 4);
 }
 
 TEST_CASE("Internal insert sorted") {
@@ -27,10 +28,37 @@ TEST_CASE("Internal insert sorted") {
   node.init(1);
 
   for (int i = 1; i <= 200; i += 10) {
-    node.insert(i, i, i + 10);
+    node.insert(makeKey(i), i, i + 10);
   }
 
   for (int i = 1; i <= 200; i += 10) {
-    REQUIRE(node.getChild(i) == i + 10);
+    REQUIRE(node.getChild(makeKey(i)) == i + 10);
   }
+}
+
+TEST_CASE("Internal node inserts separator after middle child split") {
+  Page page{};
+  InternalNode node(page);
+
+  node.init(1);
+
+  // Initial tree:
+  // 1 |20| 2 |40| 3
+  node.insert(makeKey(20), 1, 2);
+  node.insert(makeKey(40), 2, 3);
+
+  // Simulate child 2 splitting into (2, 4) with separator 30:
+  // Expected:
+  // 1 |20| 2 |30| 4 |40| 3
+  node.insert(makeKey(30), 2, 4);
+
+  REQUIRE(node.getChild(makeKey(5)) == 1);
+  REQUIRE(node.getChild(makeKey(20)) == 2);
+  REQUIRE(node.getChild(makeKey(25)) == 2);
+
+  REQUIRE(node.getChild(makeKey(30)) == 4);
+  REQUIRE(node.getChild(makeKey(35)) == 4);
+
+  REQUIRE(node.getChild(makeKey(40)) == 3);
+  REQUIRE(node.getChild(makeKey(45)) == 3);
 }

@@ -5,11 +5,14 @@
 #include <optional>
 #include <vector>
 
+using KeySize = uint16_t;
+using Key = std::vector<std::byte>;
+
 struct Record {
+  KeySize key_size;
+  Key key;
   std::vector<std::byte> record;
 };
-
-using Key = uint64_t;
 
 struct InsertResult {
   bool split;

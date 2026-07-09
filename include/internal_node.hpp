@@ -4,8 +4,14 @@
 #include "page_layout.hpp"
 #include <cstdint>
 
+struct CellSlot {
+  uint16_t offset;
+  uint16_t size;
+};
+
 struct InternalCell {
   PageId page_id;
+  KeySize key_size;
   Key key;
 };
 
@@ -16,8 +22,11 @@ private:
   auto header() -> InternalHeader &;
   [[nodiscard]] auto header() const -> const InternalHeader &;
 
-  auto cells() -> InternalCell *;
+  [[nodiscard]] auto readCell(uint16_t i) const -> InternalCell;
+  void writeCell(InternalCell cell, uint8_t *dst);
+  [[nodiscard]] auto slots() const -> CellSlot *;
   auto getCellPos(Key key) -> int;
+  void appendCell(const InternalCell &cell);
 
 public:
   explicit InternalNode(Page &page);
@@ -31,5 +40,7 @@ public:
   void init(PageId right_child);
   void clear(PageId right_child);
 
-  auto split(Page &new_page, Key sep, PageId left_child, PageId right_child) -> SplitResult;
+  auto split(Page &new_page, Key sep, PageId left_child, PageId right_child)
+      -> SplitResult;
+  void compact();
 };

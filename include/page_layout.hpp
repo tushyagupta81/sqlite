@@ -1,13 +1,11 @@
 #pragma once
 
-#include "btree.hpp"
 #include "pager.hpp"
 #include <cstdint>
 
 struct Slot {
   uint16_t offset;
   uint16_t size;
-  Key key;
 };
 
 enum class PageType: uint8_t {
@@ -33,6 +31,8 @@ struct InternalHeader{
   CommonPage common;
   uint16_t key_cnt;
   PageId right_child;
+  uint16_t free_start;
+  uint16_t free_end;
 };
 
 struct FreeListHeader{

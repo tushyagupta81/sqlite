@@ -19,4 +19,7 @@ Checks: >
   -readability-magic-numbers,
   -cppcoreguidelines-special-member-functions,
   -cppcoreguidelines-avoid-do-while,
+  -readability-convert-member-functions-to-static,
+  -readability-function-cognitive-complexity,
+  -readability-function-cognitive-complexity,
 WarningsAsErrors: '*'

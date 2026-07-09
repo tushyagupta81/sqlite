@@ -17,6 +17,8 @@ class LeafNode {
     [[nodiscard]] auto slots() const -> Slot*;
 
     auto entries() -> std::vector<std::pair<Key, Record>>;
+
+    [[nodiscard]] auto getKey(Slot slot) const -> Key;
   public:
     explicit LeafNode(Page &page);
 
