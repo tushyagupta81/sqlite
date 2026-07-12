@@ -1,8 +1,10 @@
 #pragma once
 
 #include "btree.hpp"
+#include <cstddef>
 #include <cstdint>
 #include <optional>
+#include <variant>
 #include <vector>
 
 enum ValueType : uint8_t {
@@ -10,10 +12,10 @@ enum ValueType : uint8_t {
   LONG,
   STRING,
   BLOB,
-  NONE,
 };
 
-using Value = std::string;
+using Value =
+    std::variant<int32_t, int64_t, std::string, std::vector<std::byte>>;
 
 using Row = std::vector<Value>;
 using ColumnId = uint8_t;
@@ -49,6 +51,11 @@ private:
 
   auto serialize(Row row) -> Record;
   auto deserialize(Record record) -> Row;
+  auto convertValueToBytes(Value &val, Column &col_info)
+      -> std::vector<std::byte>;
+
+  auto isFixedWidthValue(ValueType &val_type) -> bool;
+  auto getValueWidth(ValueType &val_type) -> size_t;
 
 public:
   explicit Table(Btree &btree, TableMetaData meta);
