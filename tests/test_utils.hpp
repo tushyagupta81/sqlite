@@ -44,11 +44,14 @@ static auto recordToString(const Record &record) -> std::string {
   return s;
 }
 
-inline auto makeKey(uint64_t value) -> Key {
-  Key key(8);
+template <typename T> inline auto makeKey(T value) -> Key {
+  using U = std::make_unsigned_t<T>;
 
-  for (int i = 7; i >= 0; --i) {
-    key[7 - i] = static_cast<std::byte>(value >> (i * 8));
+  U u = static_cast<U>(value);
+  Key key(sizeof(T));
+
+  for (size_t i = 0; i < sizeof(T); ++i) {
+    key[i] = static_cast<std::byte>((u >> ((sizeof(T) - 1 - i) * 8)) & 0xFF);
   }
 
   return key;

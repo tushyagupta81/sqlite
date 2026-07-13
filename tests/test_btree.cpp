@@ -19,15 +19,15 @@ TEST_CASE("Insert 10000 records") {
   LeafNode(pager.read(root)).init();
 
   for (uint32_t i = 1; i <= 10000; ++i) {
-    Key key = makeKey(i);
-    root = tree.insert(root, key, makeRecord(std::to_string(i), key));
+    Key key = makeKey<uint32_t>(i);
+    root = tree.insert(root, makeRecord(std::to_string(i), key));
   }
 
   for (uint32_t i = 1; i <= 10000; ++i) {
-    Key key = makeKey(i);
+    Key key = makeKey<uint32_t>(i);
     REQUIRE(tree.contains(root, key));
 
-    auto rec = tree.search(root, key).value();
+    auto rec = tree.find(root, key).value();
 
     REQUIRE(std::string(rec.record.begin(), rec.record.end()) ==
             std::to_string(i));
@@ -46,15 +46,15 @@ TEST_CASE("Insert 1000 records") {
   LeafNode(pager.read(root)).init();
 
   for (uint32_t i = 1; i <= 1000; ++i) {
-    Key key = makeKey(i);
-    root = tree.insert(root, key, makeRecord(std::to_string(i), key));
+    Key key = makeKey<uint32_t>(i);
+    root = tree.insert(root, makeRecord(std::to_string(i), key));
   }
 
   for (uint32_t i = 1; i <= 1000; ++i) {
-    Key key = makeKey(i);
+    Key key = makeKey<uint32_t>(i);
     REQUIRE(tree.contains(root, key));
 
-    auto rec = tree.search(root, key).value();
+    auto rec = tree.find(root, key).value();
 
     REQUIRE(std::string(rec.record.begin(), rec.record.end()) ==
             std::to_string(i));
@@ -73,17 +73,17 @@ TEST_CASE("Delete every even key") {
   LeafNode(pager.read(root)).init();
 
   for (int i = 1; i <= 500; ++i) {
-    Key key = makeKey(i);
-    root = tree.insert(root, key, makeRecord(std::to_string(i), key));
+    Key key = makeKey<uint32_t>(i);
+    root = tree.insert(root, makeRecord(std::to_string(i), key));
   }
 
   for (int i = 2; i <= 500; i += 2) {
-    Key key = makeKey(i);
+    Key key = makeKey<uint32_t>(i);
     tree.remove(root, key);
   }
 
   for (int i = 1; i <= 500; ++i) {
-    Key key = makeKey(i);
+    Key key = makeKey<uint32_t>(i);
     if ((i % 2) != 0) {
       REQUIRE(tree.contains(root, key));
     } else {
@@ -103,12 +103,12 @@ TEST_CASE("Insert ascending") {
 
   LeafNode(pager.read(root)).init();
   for (int i = 1; i <= 1000; ++i) {
-    Key key = makeKey(i);
-    root = tree.insert(root, key, makeRecord(std::to_string(i), key));
+    Key key = makeKey<uint32_t>(i);
+    root = tree.insert(root, makeRecord(std::to_string(i), key));
   }
 
   for (int i = 1; i <= 1000; ++i) {
-    Key key = makeKey(i);
+    Key key = makeKey<uint32_t>(i);
     REQUIRE(tree.contains(root, key));
   }
 }
@@ -125,12 +125,12 @@ TEST_CASE("Insert descending") {
   LeafNode(pager.read(root)).init();
 
   for (int i = 1000; i >= 1; --i) {
-    Key key = makeKey(i);
-    root = tree.insert(root, key, makeRecord(std::to_string(i), key));
+    Key key = makeKey<uint32_t>(i);
+    root = tree.insert(root, makeRecord(std::to_string(i), key));
   }
 
   for (int i = 1; i <= 1000; ++i) {
-    Key key = makeKey(i);
+    Key key = makeKey<uint32_t>(i);
     REQUIRE(tree.contains(root, key));
   }
 }
@@ -154,12 +154,12 @@ TEST_CASE("Random insert") {
   LeafNode(pager.read(root)).init();
 
   for (int k : keys) {
-    Key key = makeKey(k);
-    root = tree.insert(root, key, makeRecord(std::to_string(k), key));
+    Key key = makeKey<uint32_t>(k);
+    root = tree.insert(root, makeRecord(std::to_string(k), key));
   }
 
   for (int k : keys) {
-    Key key = makeKey(k);
+    Key key = makeKey<uint32_t>(k);
     REQUIRE(tree.contains(root, key));
   }
 }

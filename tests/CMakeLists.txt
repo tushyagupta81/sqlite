@@ -1,7 +1,8 @@
 add_executable(database_tests
-    test_leaf.cpp
-    test_internal.cpp
+    test_table.cpp
     test_btree.cpp
+    test_internal.cpp
+    test_leaf.cpp
     test_pager.cpp
 )
 

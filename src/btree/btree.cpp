@@ -7,9 +7,10 @@
 
 Btree::Btree(Pager &pager) : pager(pager) {}
 
-auto Btree::recursiveInsert(PageId root, Key key, Record record)
+auto Btree::recursiveInsert(PageId root, Record record)
     -> SplitResult {
   Page &page = pager.read(root);
+  auto key = record.key;
   if (getPageType(page) == PageType::Leaf) {
 
     LeafNode leaf(page);
@@ -24,7 +25,7 @@ auto Btree::recursiveInsert(PageId root, Key key, Record record)
   } else {
     InternalNode node(page);
     PageId child_page = node.getChild(key);
-    auto res = this->recursiveInsert(child_page, key, record);
+    auto res = this->recursiveInsert(child_page, record);
 
     if (res.left_child != res.right_child) {
       auto insert_result =
@@ -42,8 +43,8 @@ auto Btree::recursiveInsert(PageId root, Key key, Record record)
   };
 }
 
-auto Btree::insert(PageId root, Key key, Record value) -> PageId {
-  SplitResult res = this->recursiveInsert(root, key, value);
+auto Btree::insert(PageId root, Record value) -> PageId {
+  SplitResult res = this->recursiveInsert(root, value);
 
   if (res.left_child != res.right_child) {
     PageId new_page_id = pager.allocatePage();
@@ -56,7 +57,7 @@ auto Btree::insert(PageId root, Key key, Record value) -> PageId {
   return root;
 }
 
-auto Btree::search(PageId root, Key key) -> std::optional<Record> {
+auto Btree::find(PageId root, Key key) -> std::optional<Record> {
   PageId leaf_page_id = this->getLeaf(root, key);
   Page &leaf_page = pager.read(leaf_page_id);
 

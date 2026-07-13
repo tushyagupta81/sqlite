@@ -1,4 +1,5 @@
 #include "table.hpp"
+#include "page_utils.hpp"
 #include <cstddef>
 #include <cstdint>
 #include <cstring>
@@ -7,14 +8,14 @@
 #include <utility>
 #include <vector>
 
-Table::Table(Btree &btree, TableMetaData meta)
-    : btree(btree), metadata(std::move(meta)) {}
+Table::Table(Btree &btree, TableMetaData meta, Schema schema)
+    : btree(btree), metadata(std::move(meta)), schema(std::move(schema)) {}
 
-void Table::remove(Key key) { btree.remove(metadata.root_page, key); }
+void Table::remove(Key &key) { btree.remove(metadata.root_page, key); }
 
-auto Table::search(Key key) -> std::optional<Row> {
-  auto res = btree.search(metadata.root_page, key);
-  if (!res) {
+auto Table::find(Key &key) -> std::optional<Row> {
+  auto res = btree.find(metadata.root_page, key);
+  if (!res.has_value()) {
     return {};
   }
 
@@ -22,9 +23,13 @@ auto Table::search(Key key) -> std::optional<Row> {
   return row;
 }
 
-void Table::insert(Row row) {}
+void Table::insert(Row &row) {
+  Record rec = serialize(row);
 
-auto Table::serialize(Row row) -> Record {
+  metadata.root_page = btree.insert(metadata.root_page, rec);
+}
+
+auto Table::serialize(Row &row) -> Record {
   auto n = row.size();
   Key key;
   for (ColumnId cid : schema.pk_cols) {
@@ -51,81 +56,96 @@ auto Table::serialize(Row row) -> Record {
   return rec;
 }
 
-auto Table::deserialize(Record record) -> Row {}
+auto Table::deserialize(Record &record) -> Row {
+  auto n_cols = schema.columns.size();
+  Row row;
+  row.reserve(n_cols);
+
+  auto *offset = record.record.data();
+  for (auto i = 0; i < n_cols; i++) {
+    auto col_info = schema.columns[i];
+    auto val = convertBytesToValue(offset, col_info);
+    row.push_back(val);
+    switch (col_info.type) {
+    case ValueType::INT:
+      offset += 4;
+      break;
+    case ValueType::LONG:
+      offset += 8;
+      break;
+    case ValueType::STRING:
+      offset += 2;
+      offset += std::get<std::string>(val).length();
+      break;
+    case ValueType::BLOB:
+      offset += 2;
+      offset += std::get<std::vector<std::byte>>(val).size();
+      break;
+    }
+  }
+
+  return row;
+}
+
+auto Table::convertBytesToValue(std::byte *bytes, Column &col_info) -> Value {
+  switch (col_info.type) {
+  case ValueType::INT:
+    return readBigEndian<int32_t>(bytes);
+
+  case ValueType::LONG:
+    return readBigEndian<int64_t>(bytes);
+
+  case ValueType::STRING: {
+    auto len = readBigEndian<DataLen>(bytes);
+
+    return std::string(reinterpret_cast<const char *>(bytes + sizeof(DataLen)),
+                       len);
+  }
+
+  case ValueType::BLOB: {
+    auto len = readBigEndian<DataLen>(bytes);
+
+    return std::vector<std::byte>(bytes + sizeof(DataLen),
+                                  bytes + sizeof(DataLen) + len);
+  }
+  default:
+    throw std::runtime_error("Unknown column type in convert value to bytes");
+  }
+}
 
 auto Table::convertValueToBytes(Value &val, Column &col_info)
     -> std::vector<std::byte> {
   std::vector<std::byte> res;
-  if (isFixedWidthValue(col_info.type)) {
-    switch (col_info.type) {
-    case INT: {
-      auto in = std::get<int32_t>(val);
-      res.reserve(sizeof(in));
-      memcpy(res.data(), &in, getValueWidth(col_info.type));
-      break;
-    }
-    case LONG: {
-      auto ll = std::get<int64_t>(val);
-      res.reserve(sizeof(ll));
-      memcpy(res.data(), &ll, getValueWidth(col_info.type));
-      break;
-    }
-    default:
-      std::runtime_error("Unknown fixed width column type");
-    }
-  } else {
-    switch (col_info.type) {
-    case STRING: {
-      auto str = std::get<std::string>(val);
-      auto str_len = str.length();
-      auto str_len_len = getValueWidth(col_info.type);
-      res.reserve(str_len_len + str_len);
-      memcpy(res.data(), &str_len, str_len_len);
-      memcpy(res.data() + str_len_len, str.data(), str.length());
-      break;
-    }
-    case BLOB: {
-      auto blob = std::get<std::vector<std::byte>>(val);
-      auto blob_len = blob.size();
-      auto blob_len_len = getValueWidth(col_info.type);
-      res.reserve(blob_len_len + blob_len);
-      memcpy(res.data(), &blob_len, blob_len_len);
-      memcpy(res.data() + blob_len_len, blob.data(), blob.size());
-      break;
-    }
-    default:
-      std::runtime_error("Unknown fixed width column type");
-    }
+  switch (col_info.type) {
+  case ValueType::INT: {
+    auto in = std::get<int32_t>(val);
+    appendBigEndian<int32_t>(res, in);
+    break;
+  }
+  case ValueType::LONG: {
+    auto ll = std::get<int64_t>(val);
+    appendBigEndian<int64_t>(res, ll);
+    break;
+  }
+  case ValueType::STRING: {
+    const auto &str = std::get<std::string>(val);
+
+    appendBigEndian<DataLen>(res, str.size());
+
+    res.insert(res.end(), reinterpret_cast<const std::byte *>(str.data()),
+               reinterpret_cast<const std::byte *>(str.data() + str.size()));
+    break;
+  }
+  case ValueType::BLOB: {
+    const auto &blob = std::get<std::vector<std::byte>>(val);
+
+    appendBigEndian<DataLen>(res, blob.size());
+
+    res.insert(res.end(), blob.begin(), blob.end());
+    break;
+  }
+  default:
+    throw std::runtime_error("Unknown column type in convert value to bytes");
   }
   return res;
-}
-
-auto Table::isFixedWidthValue(ValueType &val_type) -> bool {
-  switch (val_type) {
-  case INT:
-    return true;
-  case LONG:
-    return true;
-  case STRING:
-    return false;
-  case BLOB:
-    return false;
-  default:
-    std::runtime_error("Unknown column type");
-  }
-}
-
-auto Table::getValueWidth(ValueType &val_type) -> size_t {
-  switch (val_type) {
-  case INT:
-    return 4;
-  case LONG:
-    return 8;
-  case STRING:
-    return 2;
-  case BLOB:
-    return 2;
-  default:
-    std::runtime_error("Unknown column type");
-  }
 }

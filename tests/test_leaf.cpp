@@ -11,7 +11,7 @@ TEST_CASE("Leaf insert and lookup") {
 
   leaf.init();
 
-  Key key = makeKey(10);
+  Key key = makeKey<uint32_t>(10);
   auto rec = makeRecord("hello", key);
   leaf.insert(key, rec);
 
@@ -29,7 +29,7 @@ TEST_CASE("Leaf delete") {
 
   leaf.init();
 
-  Key key = makeKey(10);
+  Key key = makeKey<uint32_t>(10);
   auto rec = makeRecord("hello", key);
   leaf.insert(key, rec);
 
@@ -44,7 +44,7 @@ TEST_CASE("Leaf inserts ordered keys") {
   leaf.init();
 
   for (uint32_t i = 1; i <= 100; ++i) {
-    Key key = makeKey(i);
+    Key key = makeKey<uint32_t>(i);
     auto rec = makeRecord(std::to_string(i), key);
     leaf.insert(key, rec);
   }
@@ -52,7 +52,7 @@ TEST_CASE("Leaf inserts ordered keys") {
   REQUIRE(leaf.cellCount() == 100);
 
   for (uint32_t i = 1; i <= 100; ++i) {
-    Key key = makeKey(i);
+    Key key = makeKey<uint32_t>(i);
     REQUIRE(leaf.contains(key));
   }
 }
@@ -62,9 +62,9 @@ TEST_CASE("Leaf keeps slots sorted") {
   LeafNode leaf(page);
   leaf.init();
 
-  auto key30 = makeKey(30);
-  auto key20 = makeKey(20);
-  auto key10 = makeKey(10);
+  auto key30 = makeKey<uint32_t>(30);
+  auto key20 = makeKey<uint32_t>(20);
+  auto key10 = makeKey<uint32_t>(10);
 
   leaf.insert(key30, makeRecord("30", key30));
   leaf.insert(key10, makeRecord("10", key10));
@@ -85,15 +85,15 @@ TEST_CASE("Leaf delete positions") {
   leaf.init();
 
   for (int i = 1; i <= 10; ++i) {
-    auto key = makeKey(i);
+    auto key = makeKey<uint32_t>(i);
     leaf.insert(key, makeRecord(std::to_string(i), key));
   }
 
-  auto key1 = makeKey(1);
-  auto key5 = makeKey(5);
-  auto key10 = makeKey(10);
-  auto key2 = makeKey(2);
-  auto key9 = makeKey(9);
+  auto key1 = makeKey<uint32_t>(1);
+  auto key5 = makeKey<uint32_t>(5);
+  auto key10 = makeKey<uint32_t>(10);
+  auto key2 = makeKey<uint32_t>(2);
+  auto key9 = makeKey<uint32_t>(9);
 
   leaf.delete_rec(key1);
   leaf.delete_rec(key5);
@@ -113,13 +113,13 @@ TEST_CASE("Compact preserves records") {
   leaf.init();
 
   for (int i = 1; i <= 20; ++i) {
-    auto key = makeKey(i);
+    auto key = makeKey<uint32_t>(i);
     leaf.insert(key, makeRecord(std::to_string(i), key));
   }
 
-  auto key5 = makeKey(5);
-  auto key12 = makeKey(12);
-  auto key17 = makeKey(17);
+  auto key5 = makeKey<uint32_t>(5);
+  auto key12 = makeKey<uint32_t>(12);
+  auto key17 = makeKey<uint32_t>(17);
 
   leaf.delete_rec(key5);
   leaf.delete_rec(key12);
@@ -128,7 +128,7 @@ TEST_CASE("Compact preserves records") {
   leaf.compact();
 
   for (int i = 1; i <= 20; ++i) {
-    auto key = makeKey(i);
+    auto key = makeKey<uint32_t>(i);
 
     if (i == 5 || i == 12 || i == 17) {
       REQUIRE_FALSE(leaf.contains(key));
