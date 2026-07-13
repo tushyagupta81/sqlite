@@ -1,35 +1,11 @@
-#include "table.hpp"
+#include "row_encoder.hpp"
 #include "page_utils.hpp"
 #include <cstddef>
 #include <cstdint>
-#include <cstring>
 #include <stdexcept>
 #include <string>
-#include <utility>
-#include <vector>
 
-Table::Table(Btree &btree, TableMetaData meta, Schema schema)
-    : btree(btree), metadata(std::move(meta)), schema(std::move(schema)) {}
-
-void Table::remove(Key &key) { btree.remove(metadata.root_page, key); }
-
-auto Table::find(Key &key) -> std::optional<Row> {
-  auto res = btree.find(metadata.root_page, key);
-  if (!res.has_value()) {
-    return {};
-  }
-
-  Row row = deserialize(res.value());
-  return row;
-}
-
-void Table::insert(Row &row) {
-  Record rec = serialize(row);
-
-  metadata.root_page = btree.insert(metadata.root_page, rec);
-}
-
-auto Table::serialize(Row &row) -> Record {
+auto RowEncoder::serialize(Row &row, Schema &schema) -> Record {
   auto n = row.size();
   Key key;
   for (ColumnId cid : schema.pk_cols) {
@@ -56,7 +32,7 @@ auto Table::serialize(Row &row) -> Record {
   return rec;
 }
 
-auto Table::deserialize(Record &record) -> Row {
+auto RowEncoder::deserialize(Record &record, Schema &schema) -> Row {
   auto n_cols = schema.columns.size();
   Row row;
   row.reserve(n_cols);
@@ -87,33 +63,7 @@ auto Table::deserialize(Record &record) -> Row {
   return row;
 }
 
-auto Table::convertBytesToValue(std::byte *bytes, Column &col_info) -> Value {
-  switch (col_info.type) {
-  case ValueType::INT:
-    return readBigEndian<int32_t>(bytes);
-
-  case ValueType::LONG:
-    return readBigEndian<int64_t>(bytes);
-
-  case ValueType::STRING: {
-    auto len = readBigEndian<DataLen>(bytes);
-
-    return std::string(reinterpret_cast<const char *>(bytes + sizeof(DataLen)),
-                       len);
-  }
-
-  case ValueType::BLOB: {
-    auto len = readBigEndian<DataLen>(bytes);
-
-    return std::vector<std::byte>(bytes + sizeof(DataLen),
-                                  bytes + sizeof(DataLen) + len);
-  }
-  default:
-    throw std::runtime_error("Unknown column type in convert value to bytes");
-  }
-}
-
-auto Table::convertValueToBytes(Value &val, Column &col_info)
+auto RowEncoder::convertValueToBytes(Value &val, Column &col_info)
     -> std::vector<std::byte> {
   std::vector<std::byte> res;
   switch (col_info.type) {
@@ -148,4 +98,31 @@ auto Table::convertValueToBytes(Value &val, Column &col_info)
     throw std::runtime_error("Unknown column type in convert value to bytes");
   }
   return res;
+}
+
+auto RowEncoder::convertBytesToValue(std::byte *bytes, Column &col_info)
+    -> Value {
+  switch (col_info.type) {
+  case ValueType::INT:
+    return readBigEndian<int32_t>(bytes);
+
+  case ValueType::LONG:
+    return readBigEndian<int64_t>(bytes);
+
+  case ValueType::STRING: {
+    auto len = readBigEndian<DataLen>(bytes);
+
+    return std::string(reinterpret_cast<const char *>(bytes + sizeof(DataLen)),
+                       len);
+  }
+
+  case ValueType::BLOB: {
+    auto len = readBigEndian<DataLen>(bytes);
+
+    return std::vector<std::byte>(bytes + sizeof(DataLen),
+                                  bytes + sizeof(DataLen) + len);
+  }
+  default:
+    throw std::runtime_error("Unknown column type in convert value to bytes");
+  }
 }

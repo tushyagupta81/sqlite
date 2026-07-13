@@ -1,59 +1,18 @@
 #pragma once
 
 #include "btree.hpp"
-#include <cstddef>
-#include <cstdint>
-#include <optional>
-#include <variant>
-#include <vector>
-
-enum class ValueType : uint8_t {
-  INT,
-  LONG,
-  STRING,
-  BLOB,
-};
-
-using Value =
-    std::variant<int32_t, int64_t, std::string, std::vector<std::byte>>;
-
-using Row = std::vector<Value>;
-using ColumnId = uint8_t;
-using DataLen = uint16_t;
-
-struct Column {
-  ColumnId id;
-  std::string name;
-
-  ValueType type;
-};
-
-struct TableMetaData {
-  std::string table_name;
-  PageId root_page;
-  // std::string create_str;
-};
-
-struct Schema {
-  std::vector<Column> columns;
-  std::vector<ColumnId> pk_cols;
-};
+#include "row_encoder.hpp"
 
 class Table {
 private:
   Btree &btree;
   Schema schema;
   TableMetaData metadata;
-
-  auto serialize(Row &row) -> Record;
-  auto deserialize(Record &record) -> Row;
-  auto convertValueToBytes(Value &val, Column &col_info)
-      -> std::vector<std::byte>;
-
-  auto convertBytesToValue(std::byte *bytes, Column &col_info) -> Value;
+  RowEncoder &row_encoder;
 
 public:
-  explicit Table(Btree &btree, TableMetaData meta, Schema schema);
+  explicit Table(Btree &btree, TableMetaData meta, Schema schema,
+                 RowEncoder &row_encoder);
   void insert(Row &row);
   auto find(Key &key) -> std::optional<Row>;
   void remove(Key &key);

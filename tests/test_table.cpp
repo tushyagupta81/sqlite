@@ -15,8 +15,10 @@ TEST_CASE("Insert and find single row") {
   PageId root = pager.allocatePage();
   LeafNode(pager.read(root)).init();
 
+  RowEncoder re;
+
   Table table(tree, {.table_name = "students", .root_page = root},
-              table_table_schema);
+              table_table_schema, re);
 
   Row row = {
       int32_t(1),
@@ -43,8 +45,10 @@ TEST_CASE("Insert many rows") {
   PageId root = pager.allocatePage();
   LeafNode(pager.read(root)).init();
 
+  RowEncoder re;
+
   Table table(tree, {.table_name = "students", .root_page = root},
-              table_table_schema);
+              table_table_schema, re);
 
   for (int i = 1; i <= 1000; ++i) {
     Row v = {
@@ -77,8 +81,10 @@ TEST_CASE("Find missing row") {
   PageId root = pager.allocatePage();
   LeafNode(pager.read(root)).init();
 
+  RowEncoder re;
+
   Table table(tree, {.table_name = "students", .root_page = root},
-              table_table_schema);
+              table_table_schema, re);
 
   auto key = makeKey<uint32_t>(1);
 
@@ -94,8 +100,10 @@ TEST_CASE("Remove rows") {
   PageId root = pager.allocatePage();
   LeafNode(pager.read(root)).init();
 
+  RowEncoder re;
+
   Table table(tree, {.table_name = "students", .root_page = root},
-              table_table_schema);
+              table_table_schema, re);
 
   for (int i = 1; i <= 500; ++i) {
     Row row = {
@@ -137,8 +145,10 @@ TEST_CASE("Insert variable length strings") {
   PageId root = pager.allocatePage();
   LeafNode(pager.read(root)).init();
 
+  RowEncoder re;
+
   Table table(tree, {.table_name = "students", .root_page = root},
-              table_table_schema);
+              table_table_schema, re);
 
   Row row = {
       int32_t(1),
