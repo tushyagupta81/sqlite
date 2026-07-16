@@ -7,13 +7,7 @@
 
 auto RowEncoder::serialize(Row &row, Schema &schema) -> Record {
   auto n = row.size();
-  Key key;
-  for (ColumnId cid : schema.pk_cols) {
-    auto col_info = schema.columns[cid];
-    auto row_val = row[cid];
-    auto val_in_bytes = convertValueToBytes(row_val, col_info);
-    key.insert(key.end(), val_in_bytes.begin(), val_in_bytes.end());
-  }
+  Key key = serializeKey(row, schema);
 
   KeySize key_size = key.size();
 
@@ -24,12 +18,25 @@ auto RowEncoder::serialize(Row &row, Schema &schema) -> Record {
   for (auto i = 0; i < schema.columns.size(); i++) {
     auto col_info = schema.columns[i];
     auto row_val = row[i];
-    auto val_in_bytes = convertValueToBytes(row_val, col_info);
+    auto val_in_bytes = convertValueToBytes(row_val, col_info.type);
     rec.record.insert(rec.record.end(), val_in_bytes.begin(),
                       val_in_bytes.end());
   }
 
   return rec;
+}
+
+auto RowEncoder::serializeKey(Row &row, Schema &schema) -> Key {
+  Key key;
+
+  for (ColumnId cid : schema.pk_cols) {
+    auto col_info = schema.columns[cid];
+    auto row_val = row[cid];
+    auto val_in_bytes = convertValueToBytes(row_val, col_info.type);
+    key.insert(key.end(), val_in_bytes.begin(), val_in_bytes.end());
+  }
+
+  return key;
 }
 
 auto RowEncoder::deserialize(Record &record, Schema &schema) -> Row {
@@ -40,7 +47,7 @@ auto RowEncoder::deserialize(Record &record, Schema &schema) -> Row {
   auto *offset = record.record.data();
   for (auto i = 0; i < n_cols; i++) {
     auto col_info = schema.columns[i];
-    auto val = convertBytesToValue(offset, col_info);
+    auto val = convertBytesToValue(offset, col_info.type);
     row.push_back(val);
     switch (col_info.type) {
     case ValueType::INT:
@@ -63,10 +70,10 @@ auto RowEncoder::deserialize(Record &record, Schema &schema) -> Row {
   return row;
 }
 
-auto RowEncoder::convertValueToBytes(Value &val, Column &col_info)
+auto RowEncoder::convertValueToBytes(Value &val, ValueType val_type)
     -> std::vector<std::byte> {
   std::vector<std::byte> res;
-  switch (col_info.type) {
+  switch (val_type) {
   case ValueType::INT: {
     auto in = std::get<int32_t>(val);
     appendBigEndian<int32_t>(res, in);
@@ -100,9 +107,9 @@ auto RowEncoder::convertValueToBytes(Value &val, Column &col_info)
   return res;
 }
 
-auto RowEncoder::convertBytesToValue(std::byte *bytes, Column &col_info)
+auto RowEncoder::convertBytesToValue(std::byte *bytes, ValueType val_type)
     -> Value {
-  switch (col_info.type) {
+  switch (val_type) {
   case ValueType::INT:
     return readBigEndian<int32_t>(bytes);
 
@@ -125,4 +132,26 @@ auto RowEncoder::convertBytesToValue(std::byte *bytes, Column &col_info)
   default:
     throw std::runtime_error("Unknown column type in convert value to bytes");
   }
+}
+
+auto RowEncoder::getValueType(const Value &value) -> ValueType {
+  return std::visit(
+      [](const auto &v) -> ValueType {
+        using T = std::decay_t<decltype(v)>;
+
+        if constexpr (std::is_same_v<T, int32_t>) {
+          return ValueType::INT;
+        } else if constexpr (std::is_same_v<T, int64_t>) {
+          return ValueType::LONG;
+        } else if constexpr (std::is_same_v<T, std::string>) {
+          return ValueType::STRING;
+        } else {
+          return ValueType::BLOB;
+        }
+      },
+      value);
+}
+
+auto RowEncoder::serializeValue(Value &value) -> std::vector<std::byte> {
+  return convertValueToBytes(value, getValueType(value));
 }

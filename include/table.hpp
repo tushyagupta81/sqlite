@@ -16,6 +16,7 @@ public:
   void insert(Row &row);
   auto find(Key &key) -> std::optional<Row>;
   void remove(Key &key);
+  auto serializeKey(Row &row) -> Key;
 };
 
 const Schema table_table_schema = {
@@ -33,14 +34,19 @@ const Schema table_table_schema = {
             },
             Column{
                 .id = 2,
-                .name = "n_cols",
+                .name = "root_page",
                 .type = ValueType::INT,
             },
             Column{
                 .id = 3,
+                .name = "n_cols",
+                .type = ValueType::INT,
+            },
+            Column{
+                .id = 4,
                 .name = "create_str",
                 .type = ValueType::STRING,
             },
         },
-    .pk_cols = {0},
+    .pk_cols = {1},
 };

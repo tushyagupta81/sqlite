@@ -1,5 +1,4 @@
 #include <catch2/catch_test_macros.hpp>
-#include <iostream>
 #include <string>
 
 #include "leaf_node.hpp"
@@ -29,7 +28,7 @@ TEST_CASE("Insert and find single row") {
 
   table.insert(row);
 
-  auto key = makeKey<uint32_t>(1);
+  auto key = table.serializeKey(row);
   auto found = table.find(key);
 
   REQUIRE(found.has_value());
@@ -50,6 +49,7 @@ TEST_CASE("Insert many rows") {
   Table table(tree, {.table_name = "students", .root_page = root},
               table_table_schema, re);
 
+  std::vector<Key> keys;
   for (int i = 1; i <= 1000; ++i) {
     Row v = {
         int32_t(i),
@@ -57,11 +57,12 @@ TEST_CASE("Insert many rows") {
         int32_t(i),
         "create",
     };
+    keys.push_back(table.serializeKey(v));
     table.insert(v);
   }
 
   for (int i = 1; i <= 1000; ++i) {
-    auto key = makeKey<uint32_t>(i);
+    auto key = keys[i-1];
     auto row = table.find(key);
 
     REQUIRE(row.has_value());
@@ -105,6 +106,7 @@ TEST_CASE("Remove rows") {
   Table table(tree, {.table_name = "students", .root_page = root},
               table_table_schema, re);
 
+  std::vector<Key> keys;
   for (int i = 1; i <= 500; ++i) {
     Row row = {
         int32_t(i),
@@ -112,16 +114,17 @@ TEST_CASE("Remove rows") {
         int32_t(i),
         "create",
     };
+    keys.push_back(table.serializeKey(row));
     table.insert(row);
   }
 
   for (int i = 2; i <= 500; i += 2) {
-    auto key = makeKey<uint32_t>(i);
+    auto key = keys[i-1];
     table.remove(key);
   }
 
   for (int i = 1; i <= 500; ++i) {
-    auto key = makeKey<uint32_t>(i);
+    auto key = keys[i-1];
     auto row = table.find(key);
 
     if ((i % 2) != 0) {
@@ -159,7 +162,7 @@ TEST_CASE("Insert variable length strings") {
 
   table.insert(row);
 
-  auto key = makeKey<uint32_t>(1);
+  auto key = table.serializeKey(row);
   auto found = table.find(key);
 
   REQUIRE(found.has_value());

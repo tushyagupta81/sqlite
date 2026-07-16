@@ -21,6 +21,7 @@ add_library(sqlite_lib)
 target_sources(sqlite_lib
   PRIVATE
    src/disk.cpp
+   src/catalog.cpp
    src/table/table.cpp
    src/table/row_encoder.cpp
    src/sql/executor.cpp

@@ -9,6 +9,7 @@ struct Slot {
 };
 
 enum class PageType: uint8_t {
+  Metadata,
   Leaf,
   Internal,
   FreeListTrunk,
