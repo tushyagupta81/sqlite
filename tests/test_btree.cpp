@@ -27,7 +27,7 @@ TEST_CASE("Insert 10000 records") {
     Key key = makeKey<uint32_t>(i);
     REQUIRE(tree.contains(root, key));
 
-    auto rec = tree.find(root, key).value();
+    auto rec = tree.findRec(root, key).value();
 
     REQUIRE(std::string(rec.record.begin(), rec.record.end()) ==
             std::to_string(i));
@@ -54,7 +54,7 @@ TEST_CASE("Insert 1000 records") {
     Key key = makeKey<uint32_t>(i);
     REQUIRE(tree.contains(root, key));
 
-    auto rec = tree.find(root, key).value();
+    auto rec = tree.findRec(root, key).value();
 
     REQUIRE(std::string(rec.record.begin(), rec.record.end()) ==
             std::to_string(i));

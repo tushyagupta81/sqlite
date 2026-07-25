@@ -22,6 +22,7 @@ target_sources(sqlite_lib
   PRIVATE
    src/disk.cpp
    src/catalog.cpp
+   src/cursor.cpp
    src/table/table.cpp
    src/table/row_encoder.cpp
    src/sql/executor.cpp

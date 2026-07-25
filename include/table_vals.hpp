@@ -6,6 +6,26 @@
 #include <variant>
 #include <vector>
 
+using KeySize = uint16_t;
+using Key = std::vector<std::byte>;
+
+struct Record {
+  KeySize key_size;
+  Key key;
+  std::vector<std::byte> record;
+};
+
+struct InsertResult {
+  bool split;
+  PageId old_page;
+};
+
+struct SplitResult {
+  Key sep;
+  PageId left_child;
+  PageId right_child;
+};
+
 enum class ValueType : uint8_t {
   INT,
   LONG,

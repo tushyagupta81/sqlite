@@ -57,7 +57,28 @@ auto Btree::insert(PageId root, Record value) -> PageId {
   return root;
 }
 
-auto Btree::find(PageId root, Key key) -> std::optional<Record> {
+auto Btree::find(PageId root, Key key) -> std::optional<Cursor> {
+  PageId leaf_page_id = this->getLeaf(root, key);
+  Page &leaf_page = pager.read(leaf_page_id);
+
+  LeafNode leaf_node(leaf_page);
+
+  if (!leaf_node.contains(key)) {
+    return {};
+  }
+
+  auto slot_no = leaf_node.getRecordIdx(key);
+
+  if(!slot_no) {
+    return {};
+  }
+
+  Cursor cur(pager, leaf_page, slot_no.value());
+
+  return cur;
+}
+
+auto Btree::findRec(PageId root, Key key) -> std::optional<Record> {
   PageId leaf_page_id = this->getLeaf(root, key);
   Page &leaf_page = pager.read(leaf_page_id);
 

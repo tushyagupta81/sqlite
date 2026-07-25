@@ -1,13 +1,10 @@
 #include "leaf_node.hpp"
-#include "btree.hpp"
 #include "page_layout.hpp"
 #include "page_utils.hpp"
 #include "pager.hpp"
 #include <algorithm>
 #include <cstdint>
 #include <cstring>
-#include <utility>
-#include <vector>
 
 LeafNode::LeafNode(Page &page) : page(page) {}
 
@@ -83,7 +80,7 @@ auto LeafNode::getSlotPos(Slot *slots, Key key) -> uint16_t {
   while (l <= h) {
     int m = l + (h - l) / 2;
 
-    if (getKey(slots[m]) > key) {
+    if (getKey(&slots[m]) > key) {
       h = m - 1;
     } else {
       l = m + 1;
@@ -97,24 +94,43 @@ auto LeafNode::freeSize() -> uint16_t {
   return header().free_end - header().free_start;
 }
 
+auto LeafNode::getRecAtSlot(Slot *slot) const -> Record {
+  Record rec{};
+  Key curr_key = getKey(slot);
+  auto key_size = curr_key.size();
+  auto *offset = page.data.data() + slot->offset + sizeof(KeySize) + key_size;
+
+  rec.key = curr_key;
+  rec.key_size = key_size;
+  rec.record.resize(slot->size - curr_key.size() - sizeof(KeySize));
+  std::memcpy(rec.record.data(), offset, rec.record.size());
+
+  return rec;
+}
+
 auto LeafNode::getRecord(Key key) const -> Record {
   Slot *slots = this->slots();
   auto hrd = header();
-  Record rec{};
   for (uint32_t i = 0; i < hrd.cell_cnt; i++) {
-    Key curr_key = getKey(slots[i]);
+    Key curr_key = getKey(&slots[i]);
     if (curr_key == key) {
-      auto key_size = key.size();
-      auto *offset = page.data.data() + slots[i].offset + sizeof(KeySize) + key_size;
-
-      rec.key = key;
-      rec.key_size = key_size;
-      rec.record.resize(slots[i].size - key.size() - sizeof(KeySize));
-      std::memcpy(rec.record.data(), offset, rec.record.size());
-      break;
+      return getRecAtSlot(&slots[i]);
     }
   }
-  return rec;
+  return {};
+}
+
+
+[[nodiscard]] auto LeafNode::getRecordIdx(Key key) const -> std::optional<uint16_t> {
+  Slot *slots = this->slots();
+  auto hrd = header();
+  for (uint32_t i = 0; i < hrd.cell_cnt; i++) {
+    Key curr_key = getKey(&slots[i]);
+    if (curr_key == key) {
+      return i;
+    }
+  }
+  return {};
 }
 
 auto LeafNode::contains(Key key) const -> bool {
@@ -127,9 +143,9 @@ auto LeafNode::contains(Key key) const -> bool {
   int h = hdr.cell_cnt - 1;
   while (l <= h) {
     int m = l + ((h - l) / 2);
-    if (getKey(slots[m]) == key) {
+    if (getKey(&slots[m]) == key) {
       return true;
-    } else if (getKey(slots[m]) < key) {
+    } else if (getKey(&slots[m]) < key) {
       l = m + 1;
     } else {
       h = m - 1;
@@ -153,7 +169,7 @@ auto LeafNode::entries() -> std::vector<std::pair<Key, Record>> {
   std::vector<std::pair<Key, Record>> krpair(cell_cnt);
 
   for (uint32_t i = 0; i < cell_cnt; i++) {
-    Key key = getKey(slots[i]);
+    Key key = getKey(&slots[i]);
     Record rec = getRecord(key);
     krpair[i] = {key, rec};
   }
@@ -209,14 +225,14 @@ void LeafNode::delete_rec(Key key) {
 
   while (l <= h) {
     int m = l + (h - l) / 2;
-    if (getKey(slots[m]) == key) {
+    if (getKey(&slots[m]) == key) {
       std::memmove(&slots[m],     // destination
                    &slots[m + 1], // source
                    (hdr.cell_cnt - m - 1) * sizeof(Slot));
       hdr.cell_cnt -= 1;
       hdr.free_start -= sizeof(Slot);
       return;
-    } else if (getKey(slots[m]) < key) {
+    } else if (getKey(&slots[m]) < key) {
       l = m + 1;
     } else {
       h = m - 1;
@@ -234,8 +250,8 @@ void LeafNode::compact() {
   }
 }
 
-auto LeafNode::getKey(Slot slot) const -> Key {
-  auto offset = slot.offset;
+auto LeafNode::getKey(Slot *slot) const -> Key {
+  auto offset = slot->offset;
   auto key_size = read<KeySize>(page.data.data() + offset);
   offset += sizeof(KeySize);
 
@@ -243,4 +259,26 @@ auto LeafNode::getKey(Slot slot) const -> Key {
   memcpy(key.data(), page.data.data() + offset, key_size);
 
   return key;
+}
+
+[[nodiscard]] auto LeafNode::getRecordAt(uint16_t slot_no) const
+    -> std::optional<Record> {
+  if (slot_no >= header().cell_cnt ) {
+
+    return {};
+  }
+
+  auto *slots = this->slots();
+
+  Record rec = getRecAtSlot(&slots[slot_no]);
+  return rec;
+}
+
+[[nodiscard]] auto LeafNode::nextLeaf() const -> PageId {
+  return this->header().next_leaf;
+}
+
+
+void LeafNode::replacePage(Page &page) {
+  this->page = page;
 }

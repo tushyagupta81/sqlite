@@ -1,35 +1,16 @@
 #pragma once
 
+#include "cursor.hpp"
 #include "pager.hpp"
-#include <cstdint>
+#include "table_vals.hpp"
 #include <optional>
-#include <vector>
-
-using KeySize = uint16_t;
-using Key = std::vector<std::byte>;
-
-struct Record {
-  KeySize key_size;
-  Key key;
-  std::vector<std::byte> record;
-};
-
-struct InsertResult {
-  bool split;
-  PageId old_page;
-};
-
-struct SplitResult {
-  Key sep;
-  PageId left_child;
-  PageId right_child;
-};
 
 class Btree {
 public:
   explicit Btree(Pager &pager);
   auto insert(PageId root, Record value) -> PageId;
-  auto find(PageId root, Key key) -> std::optional<Record>;
+  auto find(PageId root, Key key) -> std::optional<Cursor>;
+  auto findRec(PageId root, Key key) -> std::optional<Record>;
   void remove(PageId root, Key key);
   auto contains(PageId root, Key key) -> bool;
 

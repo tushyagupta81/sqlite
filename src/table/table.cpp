@@ -8,7 +8,8 @@ Table::Table(Btree &btree, TableMetaData meta, Schema schema, RowEncoder &row_en
 void Table::remove(Key &key) { btree.remove(metadata.root_page, key); }
 
 auto Table::find(Key &key) -> std::optional<Row> {
-  auto res = btree.find(metadata.root_page, key);
+  auto res = btree.findRec(metadata.root_page, key);
+
   if (!res.has_value()) {
     return {};
   }

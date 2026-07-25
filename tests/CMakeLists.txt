@@ -4,6 +4,7 @@ add_executable(database_tests
     test_internal.cpp
     test_leaf.cpp
     test_pager.cpp
+    test_cursor.cpp
 )
 
 target_link_libraries(database_tests
